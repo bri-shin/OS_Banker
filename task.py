@@ -1,3 +1,5 @@
+import os
+
 '''
 Class Activity is a representation of an activity that a 
 task should complete
@@ -99,7 +101,7 @@ class Task():
     def nextAcitivty(self):
         return self.execution[0].status
 
-    ''' > Functions for Managing Activities'''
+    ''' > Functions for Managing Task'''
 
     # Getting Task's Claim
     def getClaim(self, resourceType):
@@ -122,3 +124,125 @@ class Task():
             self.holding[resourceType -1] = value
         return self.holding[resourceType -1]
 
+'''
+Class TaskList is the list of all tasks that needs to be exectued
+using resource allocation algorithms (FIFO / Banker)
+'''
+
+class TaskList(list):
+    def __inint__(self, allocType):
+        super(TaskList, self).__init__()
+        self.resource = 0                       # Total number of resource Type (careful of name)
+        self.currentResource = []                   # List of current resources
+        self.totalResource = []                     # List of total amount of resources
+
+        # If statement for choosing allocation type
+        if allocType == "FIFO":
+            self.allocType = FIFO()                 # Running FIFO by creating FIFO instance
+        elif allocType == "Banker":
+            self.allocType = Banker()               # Running Banker by creating Banker instance
+        
+        # Starting Resource Allocation
+        def start(self):
+            self.allocType.run(self)
+        
+        ''' > Functions Managing Activity'''
+
+        # New activities added depending on input parameter (task number)
+        def newActivity(self, *specs):
+            activity = Activity(*specs)
+            task = self[activity.taskNum_ - 1]
+            task.newActivity(activity)
+
+        ''' > Functions Managing Tasks'''
+        
+        # New tasks created with input parameter & appended to taskList
+        def newTask(self, *specs):
+            self.append(Task(*specs, self.resource))
+        
+        # Retrieving tasks in particular state
+        def taskByState(self, tState):
+            tasks = []
+            for task in self:
+                if task.state == tState:
+                    tasks.append(task)
+            return tasks
+
+        ''' > Functions Managing Resources'''
+        # Getting held resources and updating value of held resource
+        def updateHoldResource(self, resourceType, value = -1):
+            if value >= 0:
+                self.holding[resourceType -1] = value
+            return self.holding[resourceType -1]
+
+        # Responds to task request through resource allocation
+        def allocate(self, task, resourceType, value):
+            # Updating Task Resource
+            taskResource = task.updateHoldResource(resourceType)
+            task.updateHoldResource(resourceType, taskResource+ value)
+            
+            # Update TaskList
+            heldResource = self.updateHoldResource(resourceType)
+            self.updateHoldResource(resourceType, heldResource - value)
+        
+        # Release resource when told to release
+        def release(self, task, resourceType = None, value = None):
+            if resourceType is not None and value is not None:
+                # Updating Task Resource
+                taskResource = task.updateHoldResource(resourceType)
+                task.updateHoldResource(resourceType, taskResource - value)
+                
+                # Update TaskList
+                heldResource = self.updateHoldResource(resourceType)
+                self.updateHoldResource(resourceType, heldResource + value)
+            else:
+                # To release all of the resource
+                for i in range(1, 1+self.resouce):
+                    self.updateHoldResource(i, self.updateHoldResource(i) + task.updateHoldResource(i))
+
+
+        ''' > Checker Functions'''
+
+        # Boolean that checks whether resouce can be allocated
+        def bool_allocate(self, resourceType, value):
+            if self.updateHoldResource(resourceType) - value >= 0:
+                return True
+            else:
+                return False
+
+        # Boolean that checks whether task is terminated
+        def bool_terminated(self):
+            totalTerminated = len(self.taskByState("terminated"))
+            totalAborted = len(self.taskByState("aborted"))
+            if totalTerminated + totalAborted < len(self):
+                return False
+            else:
+                return True
+
+        # Boolean that checks whether state is safe (Banker's Algo)
+        # Safe means all requests can be satisfied 
+        def bool_safe(self, task):
+            for i in range(1,self.resourceType+1):
+                if task.getClaim(i) - task.updateHoldResource(i) > self.updateHoldResource(i):
+                    return False
+            return True
+            
+        # Boolean that checks for deadlocks 
+        # Deadlock means that unfinished tasks are blocked due to allocation problems (no requests can be further satisfied)
+        def bool_deadlock(self):
+            running = self.taskByState('running')
+            blocked = self.taskByState('blocked')
+            if len(running) > 0 or len(blocked) == 0:
+                return False
+            for bt in blocked:
+                activity = bt.getActivity()
+                bt.block(activity, deadlocked= True)
+                if self.bool_allocate(activity.resourceType, activity.claim):
+                    return False
+            
+            return True
+
+
+# class FIFO():
+    
+# class Banker():
